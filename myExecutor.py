@@ -4,6 +4,11 @@ My custom render executor for remote/distributed rendering
 
 import time
 import unreal
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
 
 from util import client
 from util import renderRequest
@@ -23,12 +28,13 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         """
         self.pipeline = None
         self.queue = None
-        self.job_id = None
+        self.job_id = unreal.Text()  # Initialize with an empty unreal.Text
 
         self.http_response_recieved_delegate.add_function_unique(
             self,
             "on_http_response_received"
         )
+        LOGGER.info("MyExecutor initialized")
 
     def parse_argument(self):
         """
@@ -38,9 +44,10 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
             parse_command_line(unreal.SystemLibrary.get_command_line())
 
         self.map_path = cmd_tokens[0]
-        self.job_id = cmd_parameters['JobId']
+        self.job_id = unreal.Text(cmd_parameters['JobId'])  # Convert to unreal.Text
         self.seq_path = cmd_parameters['LevelSequence']
         self.preset_path = cmd_parameters['MoviePipelineConfig']
+        LOGGER.info(f"Arguments parsed: map_path={self.map_path}, job_id={self.job_id}, seq_path={self.seq_path}, preset_path={self.preset_path}")
 
     def add_job(self):
         """
@@ -53,9 +60,10 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         job.sequence = unreal.SoftObjectPath(self.seq_path)
 
         preset_path = unreal.SoftObjectPath(self.preset_path)
-        u_preset = unreal.SystemLibrary.\
-            conv_soft_obj_path_to_soft_obj_ref(preset_path)
+        u_preset = unreal.SystemLibrary.conv_soft_obj_path_to_soft_obj_ref(preset_path)
         job.set_configuration(u_preset)
+
+        LOGGER.info(f"Job added: {job}")
 
         return job
 
@@ -73,27 +81,38 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
                       can pass a path to an unreal queue asset via
                       '-MoviePipelineConfig' commandline argument
         """
+        LOGGER.info("execute_delayed called")
         self.parse_argument()
+        LOGGER.info("Arguments parsed in execute_delayed")
 
         # render pipeline creation
-        self.pipeline = unreal.new_object(
-            self.target_pipeline_class,
-            outer=self.get_last_loaded_world(),
-            base_type=unreal.MoviePipeline
-        )
-        self.pipeline.on_movie_pipeline_finished_delegate.add_function_unique(
-            self,
-            "on_job_finished"
-        )
-        self.pipeline.on_movie_pipeline_work_finished_delegate.add_function_unique(
-            self,
-            "on_pipeline_finished"
-        )
+        try:
+            self.pipeline = unreal.new_object(
+                self.target_pipeline_class,
+                outer=self.get_last_loaded_world(),
+                base_type=unreal.MoviePipeline
+            )
+            LOGGER.info("Pipeline object created")
 
-        # create our own queue for single job handling
-        self.queue = unreal.new_object(unreal.MoviePipelineQueue, outer=self)
-        job = self.add_job()
-        self.pipeline.initialize(job)
+            self.pipeline.on_movie_pipeline_shot_work_finished_delegate.add_function_unique(
+                self,
+                "on_job_finished"
+            )
+            self.pipeline.on_movie_pipeline_work_finished_delegate.add_function_unique(
+                self,
+                "on_pipeline_finished"
+            )
+            LOGGER.info("Pipeline delegates added")
+
+        # keep running this even code above has error
+        except Exception as e:
+        
+            # create our own queue for single job handling
+            self.queue = unreal.new_object(unreal.MoviePipelineQueue, outer=self)
+            job = self.add_job()
+            self.pipeline.initialize(job)
+            LOGGER.info("Pipeline initialized and job added to queue")
+            LOGGER.error(f"Error in execute_delayed: {e}")
 
     @unreal.ufunction(override=True)
     def on_begin_frame(self):
@@ -108,22 +127,23 @@ class MyExecutor(unreal.MoviePipelinePythonHostExecutor):
         if not self.pipeline:
             return
 
+        unreal.log("Progress: %f" % 
+                   unreal.MoviePipelineLibrary.get_completion_percentage(self.pipeline))
+        
         status = renderRequest.RenderStatus.in_progress
-        progress = 100 * unreal.MoviePipelineLibrary.\
-            get_completion_percentage(self.pipeline)
-        time_estimate = unreal.MoviePipelineLibrary.\
-            get_estimated_time_remaining(self.pipeline)
+        progress = 100 * unreal.MoviePipelineLibrary.get_completion_percentage(self.pipeline)
+        time_estimate = unreal.MoviePipelineLibrary.get_estimated_time_remaining(self.pipeline)
+        time_estimate_str = unreal.TextLibrary.as_timespan_timespan(time_estimate)
 
         if not time_estimate:
-            time_estimate = unreal.Timespan.MAX_VALUE
+            time_estimate = unreal.Text("Unknown")
 
-        days, hours, minutes, seconds, _ = time_estimate.to_tuple()
-        time_estimate = '{}h:{}m:{}s'.format(hours, minutes, seconds)
+        LOGGER.info(f"Frame update: progress={progress}, time_estimate={time_estimate}")
 
         self.send_http_request(
             '{}/put/{}'.format(client.SERVER_API_URL, self.job_id),
             "PUT",
-            '{};{};{}'.format(progress, time_estimate, status),
+            '{};{};{}'.format(progress, time_estimate_str, status),
             unreal.Map(str, str)
         )
 

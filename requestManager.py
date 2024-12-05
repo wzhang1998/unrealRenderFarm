@@ -23,7 +23,7 @@ LOGGER = logging.getLogger(__name__)
 
 # region HTTP REST API
 app = Flask(__name__)
-FLASK_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\ThirdParty\Python3\Win64\Scripts\flask.exe'
+FLASK_EXE = r'C:\Users\vvox\AppData\Local\Programs\Python\Python312\Scripts\flask.exe'
 
 
 @app.route('/')

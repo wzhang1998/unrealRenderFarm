@@ -20,8 +20,8 @@ MODULE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # render worker specific configuration
 WORKER_NAME = 'RENDER_MACHINE_01'
-UNREAL_EXE = r'E:\Epic\UE_5.0\Engine\Binaries\Win64\UnrealEditor.exe'
-UNREAL_PROJECT = r"E:\Epic\UnrealProjects\SequencerTest\SequencerTest.uproject"
+UNREAL_EXE = r'C:\Program Files\Epic Games\UE_5.5\Engine\Binaries\Win64\UnrealEditor.exe'
+UNREAL_PROJECT = r"C:\Users\vvox\Documents\UnrealProjects\MesaProject\MesaProject.uproject"
 
 
 def render(uid, umap_path, useq_path, uconfig_path):
@@ -61,9 +61,15 @@ def render(uid, umap_path, useq_path, uconfig_path):
         # logging
         "-StdOut",
         "-FullStdOutLogOutput"
+        # "-Unattended"
     ]
     env = os.environ.copy()
     env["UE_PYTHONPATH"] = MODULE_PATH
+
+    #debug if env set correctly
+    LOGGER.info(env)
+    
+
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
@@ -76,10 +82,14 @@ def render(uid, umap_path, useq_path, uconfig_path):
 if __name__ == '__main__':
     LOGGER.info('Starting render worker %s', WORKER_NAME)
     while True:
+
         rrequests = client.get_all_requests()
         uids = [rrequest.uid for rrequest in rrequests
                 if rrequest.worker == WORKER_NAME and
                 rrequest.status == renderRequest.RenderStatus.ready_to_start]
+        
+        #debug why render not starting
+        print(uids)
 
         # render blocks main loop
         for uid in uids:
@@ -93,10 +103,11 @@ if __name__ == '__main__':
                 rrequest.uconfig_path
             )
 
+
             # for debugging
-            # for line in str(output).split(r'\r\n'):
-            #     if 'LogPython' in line:
-            #         print(line)
+            for line in str(output).split(r'\r\n'):
+                if 'LogPython' in line:
+                    print(line)
 
             LOGGER.info("finished rendering job %s", uid)
 

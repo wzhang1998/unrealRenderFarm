@@ -24,19 +24,19 @@ def send(d):
 
 if __name__ == '__main__':
     test_job_a = {
-        'name': 'street_seq01',
+        'name': 'test_render01',
         'owner': 'TEST_SUBMITTER_01',
-        'umap_path': '/Game/Cinematics/Street/Level_Cin_Street.Level_Cin_Street',
-        'useq_path': '/Game/Cinematics/Street/Shots/Shot01/LS_Shot_Street_Shot01.LS_Shot_Street_Shot01',
-        'uconfig_path': '/Game/Cinematics/Preset/Test.Test'
+        'umap_path': '/Game/Maps/LVL_MesaLandscape_small.LVL_MesaLandscape_small',
+        'useq_path': '/Game/Cinematics/Sequences/MesaSeqSmallscale/MesaSeqSmallscaleRoot.MesaSeqSmallscaleRoot',
+        'uconfig_path': '/Game/Cinematics/Presets/Config_4k.Config_4k'
     }
 
     test_job_b = {
-        'name': 'street_seq02',
-        'owner': 'TEST_SUBMITTER_01',
-        'umap_path': '/Game/Cinematics/Street/Level_Cin_Street.Level_Cin_Street',
-        'useq_path': '/Game/Cinematics/Street/Shots/Shot02/LS_Shot_Street_Shot02.LS_Shot_Street_Shot02',
-        'uconfig_path': '/Game/Cinematics/Preset/Test.Test'
+        'name': 'test_render02',
+        'owner': 'TEST_SUBMITTER_02',
+        'umap_path': '/Game/Maps/LVL_MesaLandscape_small.LVL_MesaLandscape_small',
+        'useq_path': '/Game/Cinematics/Sequences/MesaSeqSmallscale/shot/shot0010/shot0010_02.shot0010_02',
+        'uconfig_path': '/Game/Cinematics/Presets/Config_4k.Config_4k'
     }
 
     for job in [test_job_a, test_job_b]:
